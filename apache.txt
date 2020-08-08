@@ -1,0 +1,1639 @@
+Métodos de envío de los datos
+Cuando se realiza una petición se puede utilizar uno de los siguientes métodos:
+
+GET: Solicita un documento al servidor. Se pueden enviar datos en la URL.
+HEAD: Similar a GET, pero sólo pide las cabeceras HTTP.
+POST: Manda datos al servidor para su procesado.Similar a GET, pero además envía datos en el cuerpo del mensaje.
+PUT: Almacena el documento enviado en el cuerpo del mensaje.
+DELETE: Elimina el documento referenciado en la URL.
+…
+Código de estados
+Cuando el servidor devuelve una respuesta se indica un código de estado:
+
+-1XX mensaje informativo
+-2XX exito
+200 OK
+201 Created
+202 Accepted
+204 No content
+-3XX
+300 Multiple choice
+301 Moved permanently
+302 Found
+304 Not modified
+-4XX
+400 Bad request
+401 Unauthorized
+403 Forbidden
+404 Not found
+-5XX
+500 Internal server error
+501 Not implemented
+502 Bad gateway
+503 Servide unavailable
+
+Cabeceras
+Tanto la petición como las respuestas tienen una serie de metainformación llamadas cabeceras, podemos indicar las más importantes:
+
+Host: Nombre y puerto del servidor al que se dirige la petición.
+User-Agent: Identificación del programa del cliente.
+Server: indica el tipo de servidor HTTP empleado.
+Cache-control: lo usa el servidor para decirle al navegador que objetos cachear, durante cuanto tiempo, etc..,
+Content-type: Tipo MIME del recurso.
+Content-Encoding: se indica el tipo de codificación empleado en la respuesta.
+Expires: indica una fecha y hora a partir del cual la respuesta HTTP se considera obsoleta. Usado para gestionar caché.
+Location: usado para especificar una nueva ubicación en casos de redirecciones.
+Set-Cookie: Solicita la creación de una cookie en el cliente.
+Otras características
+Cookies: Las cookies son información que el navegador guarda en memoria o en el disco duro dentro de ficheros de texto, a solicitud del servidor.
+Sesiones: HTTP es un protocolo sin manejo de estados. Las sesiones nos permiten definir estados, para ello el servidor almacenará la información necesaria 
+para llevar el seguimiento de la sesión.
+Autentificación: A veces, debido a cuestiones de personalización o a políticas de restricción, las aplicaciones Web deben conocer y 
+verificar la identidad del usuario, mediante nombre de usuario y contraseña.
+Conexiones persistentes: Permiten que varias peticiones y respuestas sean transferidas usando la misma conexión TCP.
+Ejemplo de peticiones
+GET -USE http://playerone.josedomingo.org/index.php
+GET -USE http://playerone.josedomingo.org/index.php?variable=100
+POST -aUSE http://playerone.josedomingo.org/index.php
+
+Ventajas de usar Apache2
+Modular
+Código abierto
+Multi-plataforma
+Extensible
+Popular (fácil conseguir ayuda/soporte)
+
+Para controlar el servicio apache2 podemos usar (para más información):
+
+apache2ctl [-k start|restart|graceful|graceful-stop|stop]
+La opción graceful es un reinicio suave, se terminan de servir las peticiones que están establecidas y cuando se finaliza se hace una reinicio del servidor.
+
+Con esta herramienta podemos obtener también más información del servidor:
+
+apache2ctl -t : Comprueba la sintaxis del fichero de configuración.
+apache2ctl -M : Lista los módulos cargados.
+apache2ctl -S : Lista los sitios virtuales y las opciones de configuración.
+apache2ctl -V : Lista las opciones de compilación
+Evidentemente el servidor está gestionado por Systemd, por lo tanto para controlar el arranque, 
+reinicio y parada del servicio utilizaremos la siguiente instrucción:
+
+systemctl [start|stop|restart|reload|status] apache2.service
+
+El fichero principal de configuración de Apache2 es /etc/apache2/apache2.conf. 
+En ese fichero se incluyen los ficheros que forman parte de la configuración de Apache2:
+
+...
+IncludeOptional mods-enabled/*.load
+IncludeOptional mods-enabled/*.conf
+...
+Include ports.conf
+...
+IncludeOptional conf-enabled/*.conf
+IncludeOptional sites-enabled/*.conf
+Los ficheros que se añaden guardados en el directorio mods-enabled correponden a los módulos activos.
+Los ficheros añadidos del directorio sites-enabled corresponden a la configuración de los sitios virtuales activos.
+Del directorio conf-enabled añadimos ficheros de configuración adicionales.
+Por último en el fichero ports.conf se especifica los puertos de escucha del servidor.
+Opciones de configuración para los servidores virtuales
+Por defecto se indican las opciones de configuración del directorio /var/www y de todos sus subdirectorios, por lo tanto los DocumentRoot de los virtual host 
+que se crean deben ser subdirectorios del este directorio, por lo tanto encontramos en el fichero /etc/apache2/apache2.conf lo siguiente:
+
+<Directory /var/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+Podemos indicar como directorio raíz de nuestros virtual host otro directorio (tenemos que descomentar):
+
+#<Directory /srv/>
+#    Options Indexes FollowSymLinks
+#    AllowOverride None
+#    Require all granted
+#</Directory>
+Añadir nueva configuración
+Si tenemos configuración adicional para nuestro servidor podemos guardarla en un fichero (por ejemplo prueba.conf) dentro del directorio 
+/etc/apache2/conf-available. Para añadir dicho fichero de configuración a la configuración general del servidor usamos la instrucción:
+
+# a2enconf prueba
+Esta instrucción crea un enlace simbólico en el directorio /etc/apache2/conf-enabled. Para desactivar una configuración usamos:
+
+# a2disconf prueba 
+Variables de entorno de Apache
+El servidor HTTP Apache HTTP ofrece un mecanismo para almacenar información en variables especiales que se llaman variables de entorno. 
+Esta información puede ser usada para controlar diversas operaciones como por ejemplo, 
+almacenar datos en ficheros de registro (log files) o controlar el acceso al servidor. 
+Podemos encontrar estas variables definidas en el fichero /etc/apache2/envvars.
+
+Estudiemos algunas directivas que podemos encontrar en /etc/apache2/apache2.conf:
+
+Directivas de control de la conexión
+Timeout: define, en segundos, el tiempo que el servidor esperará por recibir y transmitir durante la comunicación. 
+Timeout está configurado por defecto a 300 segundos, lo cual es apropiado para la mayoría de las situaciones.
+KeepAlive: Define si las conexiones persistentes están activadas. Por defecto están activadas.
+MaxKeepAliveRequests: Establece el número máximo de peticiones permitidas por cada conexión persistente. Por defecto está establecido como 100.
+KeepAliveTimeout: Establece el número de segundos que el servidor esperará tras haber dado servicio a una petición, antes de cerrar la conexión. 
+Por defecto 5 segundos.
+
+Otras directivas
+User: define el usuario que ejecuta los procesos de Apache2.
+Group: define el grupo al que corresponde el usuario.
+LogLevel: Controla el nivel de información que se guarda en los ficheros de registro o logs.
+LogFormat: Controla el formato de información que se va a guardar en los ficheros logs.
+Directory o DirectoryMatch: Declara un contexto para un directorio y todos sus directorios.
+Files o FilesMatch: Declara un contexto para un conjunto de ficheros.
+
+El servidor web Apache 2.4 se instala por defecto con la configuración de un servidor virtual. La configuración de este sitio la podemos encontrar en:
+
+/etc/apache2/sites-available/000-default.conf
+Y por defecto este sitio virtual está habilitado, por lo que podemos comprobar que existe un enlace simbólico a este fichero en el directorio 
+/etc/apache2/sites-enables:
+
+lrwxrwxrwx 1 root root   35 Oct  3 15:24 000-default.conf -> ../sites-available/000-default.conf
+Una de las directivas más importantes que nos encontramos en el fichero de configuración es DocumentRoot donde se indica el directorio 
+donde van a estar guardados los ficheros de nuestro sitio web, los ficheros que se van a servir. En la configuración del virtual host por defecto 
+el directorio es:
+
+/var/www/html
+En el fichero de configuración general /etc/apache2/apache2.conf nos encontramos las opciones de configuración del directorio padre del indicado 
+en la directiva DocumentRoot (suponemos que todos los host virtuales van a estar guardados en subdirectorios de este directorio):
+
+...
+<Directory /var/www/>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+...
+Por lo tanto podemos acceder desde un navegador a la ip de nuestro servidor (también podemos usar un nombre del servidor) y accederemos 
+a la página de bienvenida del servidor que se encuentra en:
+
+/var/www/html/index.html
+Por defecto los errores de nuestro sitio virtual se guardan en /var/log/apache2/error.log y los accesos a nuestro servidor se guardan en 
+/var/log/apache2/access.log.
+
+El término Hosting Virtual se refiere a hacer funcionar más de un sitio web (tales como www.pagina1.com y www.pagina2.com) en una sola máquina. 
+Los sitios web virtuales pueden estar “basados en direcciones IP”, lo que significa que cada sitio web tiene una dirección IP diferente, 
+o “basados en nombres diferentes”, lo que significa que con una sola dirección IP están funcionando sitios web con diferentes nombres (de dominio). 
+Apache fue uno de los primeros servidores web en soportar hosting virtual basado en direcciones IP.
+
+Como hemos visto en la unidad anterior el servidor web Apache2 se instala por defecto con un host virtual en /etc/apache2/sites-available/000-default.conf.
+
+Cuyo contenido podemos ver:
+
+<VirtualHost *:80>
+        #ServerName www.example.com    
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html    
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined    
+</VirtualHost>
+
+Donde encontramos los siguientes parámetros:
+
+ServerName: Nombre por el que se va a acceder al virtual host.
+ServerAdmin: Correo electrónico del responsable de este virtual host.
+ServerAlias: Otros nombres con los que se puede acceder al sitio.
+DocumentRoot: directorio donde se guardan los ficheros servidos en este virtual host.
+ErrorLog: Fichero donde se guardan los errores.
+CustomLog: Fichero donde se guarda los accesos al sitio.
+Podemos habilitar o deshabilitar nuestros host virtuales utilizando los comandos a2ensite y a2dissite.
+
+Vamos a realizar un ejercicio para mostrar como podemos configurar distintos sitios virtuales en Apache 2.4 (basados en nombre). El objetivo es la puesta en marcha de dos sitios web utilizando el mismo servidor web apache. Hay que tener en cuenta lo siguiente:
+
+-Cada sitio web tendrá nombres distintos.
+-Cada sitio web compartirán la misma dirección IP y el mismo puerto (80).
+
+Queremos construir en nuestro servidor web apache dos sitios web con las siguientes características:
+
+-El nombre de dominio del primero será www.pagina1.org, su directorio base será /var/www/pagina1 y contendrá una página llamada index.html, 
+donde se verá un mensaje de bienvenida.
+-El nombre de dominio del primero será www.pagina2.org, su directorio base será /var/www/pagina2 y contendrá una página llamada index.html, 
+donde se verá un mensaje de bienvenida.
+
+Para conseguir estos dos sitios virtuales debes seguir los siguientes pasos:
+
+1- Los ficheros de configuración de los sitios webs se encuentran en el directorio /etc/apache2/sites-available, por defecto hay dos ficheros, 
+uno se llama 000-default.conf que es la configuración del sitio web por defecto. Necesitamos dos nuevos ficheros para realizar la configuración 
+de los dos sitios virtuales, para ello vamos a copiar el fichero 000-default.conf a los dos nuevos ficheros:
+
+ cd /etc/apache2/sites-available
+ cp 000-default.conf pagina1.conf
+ cp 000-default.conf pagina2.conf
+
+De esta manera tendremos un fichero llamado pagina1.conf para realizar la configuración del sitio web www.pagina1.org, y otro llamado pagina2.conf para el sitio 
+web www.pagina2.org.
+
+2- Modificamos los ficheros pagina1.conf y pagina2.conf, para indicar el nombre que vamos a usar para acceder al host virtual (ServerName) 
+y el directorio de trabajo (DocumentRoot). También podríamos cambiar el nombre del fichero donde se guarda los logs.
+
+3- No es suficiente crear los ficheros de configuración de cada sitio web, es necesario crear un enlace simbólico a estos ficheros dentro del directorio 
+/etc/apache2/sites-enabled, para ello:
+
+ a2ensite pagina1
+ a2ensite pagina2
+La creación de los enlaces simbólicos se puede hacer con la instrucción a2ensite nombre_fichero_configuracion, para deshabilitar el sitio tenemos que borrar 
+el enlace simbólico o usar la instrucción a2dissite nombre_fichero_configuracion.
+
+4- Creamos los directorios y los ficheros index.html necesarios en /var/www y reiniciamos el servicio. Recuerda que los ficheros servidos deben ser propiedad 
+del usuario y grupo que usa Apache, es decir usuario www-data y grupo www-data.
+
+ # chown -R www-data:www-data /var/www/pagina1
+ # chown -R www-data:www-data /var/www/pagina2
+ 
+5- Para terminar lo único que tendremos que hacer es cambiar el fichero hosts en los clientes y poner dos nuevas líneas donde se haga la conversión 
+entre los dos nombre de dominio y la dirección IP del servidor.
+
+Configuración de los puertos de escucha
+Para determinar los puertos de escucha del servidor web utilizamos la directiva Listen que podemos modificar en el archivo /etc/apache2/ports.conf.
+
+Como funciona en los Virtual Host
+Listen solo le dice al servidor principal en qué direcciones y puertos tiene que escuchar. Si no se usan directivas <VirtualHost>, el servidor se comporta 
+de la misma manera con todas las peticiones que se acepten. Sin embargo, <VirtualHost> puede usarse para especificar un comportamiento diferente en una 
+o varias direcciones y puertos. Para implementar un host virtual, hay que indicarle primero al servidor que escuche en aquellas direcciones y puertos a usar. 
+Posteriormente se debe crear un una sección <VirtualHost> en una dirección y puerto específicos para determinar el comportamiento de ese host virtual.
+
+Por defecto los Virtual Host que hemos definido responden desde cualquier IP en el puerto 80, en el fichero /etc/apache2/sites-available/000-default.conf 
+encontramos:
+
+<VirtualHost *:80>
+...
+
+Ejemplo: Virtual Host basado en IP
+En este caso nuestra máquina debe tener configurado varias IP (lo vamos a probar en nuestro servidor local que tiene configurado dos interfaces de red), 
+por cada IP se va servir un virtual host.
+
+<VirtualHost 192.168.56.3:80>
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/externa
+    ErrorLog ${APACHE_LOG_DIR}/error_externa.log
+    CustomLog ${APACHE_LOG_DIR}/access_externa.log combined
+</VirtualHost>    
+
+<VirtualHost 172.22.0.1:80>
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/interna
+    ErrorLog ${APACHE_LOG_DIR}/error_interna.log
+    CustomLog ${APACHE_LOG_DIR}/access_interna.log combined
+</VirtualHost>
+
+Ejemplo: Servir el mismo contenido en varias IP
+Suponemos que nuestro servidor tiene dos interfaces de red (una interfaz interna (intranet) y otra externa (internet)), 
+queremos que responda a las dos direcciones:
+
+<VirtualHost 192.168.56.3 172.22.0.1>
+    DocumentRoot /var/www/externa
+    ServerName servidor.example.com
+    ServerAlias servidor
+    ...
+</VirtualHost>
+
+Ejemplo: Sirviendo distintos sitios en distintos puertos
+En esta ocasión hemos definido dos puertos de escucha en el fichero /etc/apache2/ports.conf:
+
+Listen 80
+Listen 8080
+Y la configuración de los virtual host podría ser la siguiente:
+
+<VirtualHost *:80>
+    ServerName servidor.example.com
+    DocumentRoot /var/www/externa
+</VirtualHost>
+
+<VirtualHost *:8080>
+    ServerName servidor.example.com
+    DocumentRoot /var/www/interna
+</VirtualHost>
+
+Cuando indicamos la configuración de un servidor servidor por apache, por ejemplo con la directiva Directory, podemos indicar algunas opciones con la directiva 
+Options. Algunas de las opciones que podemos indicar son las siguientes:
+
+All: Todas las opciones excepto MultiViews.
+FollowSymLinks: Se pueden seguir los enlaces simbólicos.
+Indexes: Cuando accedemos al directorio y no se encuentra un fichero por defecto (indicado en la directiva DirectoryIndex del módulo mod_dir), 
+por ejemplo el index.html, se muestra la lista de ficheros (esto lo realiza el módulo mod_autoindex).
+MultiViews: Permite la negociación de contenido, mediante el módulo mod_negotiation.
+SymLinksIfOwnerMatch: Se pueden seguir enlaces simbólicos, sólo cuando el fichero destino es del mismo propietario que el enlace simbólico.
+ExecCGI: Permite ejecutar script CGI usando el módulo mod_cgi.
+Podemos activar o desactivar una opción en referencia con la configuración de un directorio padre mediante el signo + o -.
+
+Ejemplo
+En el fichero /etc/apache2/apache2.conf, nos encontramos el siguiente código:
+
+<Directory /var/www/>
+    Options Indexes FollowSymLinks
+    ...
+A continuación podría cambiar las opción del virtual host pagina1, incluyendo en su fichero de configuración:
+
+<Directory /var/www/pagina1>
+    Options -Indexes +Multiviews
+    ...
+	
+Las directiva Alias nos permite que el servidor sirva ficheros desde cualquier ubicación del sistema de archivo aunque este fuera del directorio indicado 
+en el DocumentRoot.
+
+Por ejemplo si pongo este alias en el fichero de configuración de pagina1:
+
+Alias "/image" "/ftp/pub/image"
+Puedo acceder, por ejemplo, a una imagen con la URL www.pagina1.org/image/logo.jpg.
+
+No basta con poner la directiva Alias, además es necesario dar permiso de acceso al directorio, por lo tanto tendremos que poner:
+
+Alias "/image" "/ftp/pub/image"
+<Directory "/ftp/pub/image">
+    Require all granted
+</Directory>
+Podemos usar la directiva AliasMatch de forma similar a Alias pero usando expresiones regulares para determinar la URL a la que se accede. Por ejemplo:
+
+AliasMatch "^/image/(.*)$" "/ftp/pub/image/$1"
+
+Apache puede escoger la mejor representación de un recurso basado en las preferencias proporcionadas por el navegador (browser) para los distintos 
+tipos de medios, idiomas, conjunto de de caracteres y codificación. A esta funcionalidad se le llama negociación de contenidos. 
+Un recurso puede estar disponible en diferentes representaciones. Por ejemplo, puede estar disponible en diferentes idiomas, es posible que el servidor 
+haga una selección automáticamente de la página que tiene que servir. Esto funciona porque los navegadores pueden enviar como parte de su petición 
+información sobre qué representación prefieren. Por ejemplo, un navegador podría indicar que prefiere ver información en francés y, si no fuera posible, 
+en inglés. Los navegadores indican sus preferencias a través de cabeceras en la petición. Para pedir representaciones únicamente en español, 
+el navegador podría enviar algo así:
+
+Accept-Language: es
+Para llevar a cabo esta funcionalidad Apache2 utiliza el módulo negotiation_module que está habilitado por defecto.
+
+Configuración del módulo de negociación de contenidos con Multiviews
+Queremos que al acceder a la ULR www.pagina1.org/internacional se muestre un index.html con el idioma adecuado según la cabecera Accept-Languaje enviada 
+por el cliente.
+
+Lo primero que tenemos es crear varios ficheros index.html con los distintos idiomas ofrecidos por el servidor:
+
+# ls /var/www/html/internacional
+index.html.en  index.html.es
+Hemos creado dos ficheros: index.html.en para el idioma inglés y index.html.es para el español.
+
+A continuación debemos activar la opción Multiviews para el directorio con el que estamos trabajando, por lo tanto en el fichero de configuración 
+del virtual host /etc/apache2/sites-availables/pagina1.conf creamos una sección Directory:
+
+...
+<Directory /var/www/html/internacional>
+    Options +Multiviews
+</Directory>
+...
+Ya tan sólo tenemos que configurar el idioma en el navegado y acceder a la URL y podemos comprobar como se sirve las distintas páginas según el idioma 
+seleccionado.
+
+Configuración del módulo de negociación de contenidos con ficheros type-map
+Un handler es una representación interna de Apache de una acción que se va a ejecutar cuando hay una llamada a un fichero. Generalmente, 
+los ficheros tienen handlers implícitos, basados en el tipo de fichero de que se trata. Normalmente, todos los ficheros son simplemente servidos por el servidor,
+ pero algunos tipos de ficheros se tratan de forma diferente.
+
+Nosotros vamos a tener un fichero especial que denominamos type-map con extensión var al que le vamos a crear un handler para manejarlo de una manera especial 
+para el negociado de contenidos.
+
+Los ficheros de tipo mapa tienen una entrada para cada variante disponible. Estas entradas consisten en líneas de cabecera contiguas en formato HTTP. 
+Las entradas para diferentes variantes se separan con líneas en blanco. Las líneas en blanco no están permitidas dentro de una entrada. 
+Existe el acuerdo de empezar un fichero mapa con una entrada para la entidad combinada como un todo.
+
+Por lo tanto la configuración del directorio sería:
+
+<Directory /var/www/html/internacional>
+    DirectoryIndex index.var
+    AddHandler type-map .var
+</Directory>
+...
+Con la directiva DirectoryIndex indicamos que el fichero por defecto será index.var.
+
+En el directorio /var/www/html/internacional, ademas de tener los ficheros: index.html.en y index.html.es, tendremos un fichero index.var con el siguiente 
+contenido:
+
+URI: index    
+
+URI: index.html.en
+Content-type: text/html
+Content-language: en    
+
+URI: index.html.es
+Content-type: text/html
+Content-language: es
+
+La directiva redirect es usada para pedir al cliente que haga otra petición a una URL diferente. Normalmente la usamos cuando el recurso al que queremos acceder 
+a cambiado de localización.
+
+Podemos crear redirecciones de dos tipos:
+
+-Permanentes: se da cuando el recurso sobre el que se hace la petición ha sido ‘movido permanentemente‘ hacia una dirección distinta, es decir, hacia otra URL. 
+Se devuelve el código de estado 301. Es la que debemos realizar cuando queremos cambiar la URL de un recurso para que los buscadores, por ejemplo 
+cuando cambiamos de dominio, sigan guardando la posición que tenía nuestra página.
+-Temporales: se da cuando el recurso sobre el que se hace la petición ha sido “encontrado” pero reside temporalmente en una dirección distinta, es decir, 
+en otra URL. Se devuelve un código de estado 302. Es la opción por defecto.
+
+Ejemplos de redirecciones temporales
+Redirect "/service" "http://www.pagina.com/service"
+Redirect "/one" "/two"
+Como vemos podemos hacer redirecciones a URL de otro servidor o del mismo servidor.
+
+Ejemplos de redirecciones permanentes
+Redirect permanent "/one" "http://www.pagina2.com/two"
+Redirect 301 "/otro" "/otra"
+De forma similar a AliasMatch, podemos usar la directiva RedirectMatch para poder usar expresiones regulares para determinar la URL origen. Por ejemplo:
+
+RedirectMatch "(.*)\.gif$" "http://www.pagina2.org/$1.jpg"
+
+Apache ofrece la posibilidad de que los administradores puedan configurar las respuestas que muestra el servidor Apache cuando se producen algunos errores o problemas. Se puede hacer que el servidor siga uno de los siguientes comportamientos:
+
+Desplegar un texto diferente, en lugar de los mensajes que aparecen por defecto.
+Redireccionar la petición a una URL local.
+Redireccionar la petición a una URL externa.
+La directiva ErrorDocument me permite configurar la página de error personalizada para cada tipo de error (código de estados). Por ejemplo:
+
+ErrorDocument 403 "Sorry can't allow you access today" 
+ErrorDocument 404 /error/404.html
+ErrorDocument 500 http://www.pagina2.org/error.html
+La directiva ErrorDocument la podemos usar en diferentes ámbitos de nuestra configuración, por ejemplo si la ponemos dentro de un Host Virtual la páginas de errores personalizadas se verán sólo en ese host virtual.
+
+Si queremos configurar las páginas de error personalizadas podemos hacerlo en un fichero de configuración: /etc/apache2/conf-available/localized-error-pages.conf. Este fichero de configuración está activo, podemos ver el enlace simbólico que existe en el directorio /etc/apache2/conf-enabled.
+
+Cambiando el idioma de las páginas de error personalizadas
+En el directorio /usr/share/apache2/error nos encontramos fichero tipo mapa donde se encuentra definida las páginas de error personalizadas para distintos 
+idiomas. Por negociación de contenidos podemos activar la funcionalidad de que sirva la versión adecuada, para ello debemos descomentar en el fichero 
+/etc/apache2/conf-available/localized-error-pages.conf el siguiente bloque:
+
+<IfModule mod_negotiation.c>
+        <IfModule mod_include.c>
+                <IfModule mod_alias.c>    
+
+                        Alias /error/ "/usr/share/apache2/error/"    
+
+                        <Directory "/usr/share/apache2/error">
+                                Options IncludesNoExec
+                                AddOutputFilter Includes html
+                                AddHandler type-map var
+                                Order allow,deny
+                                Allow from all
+                                LanguagePriority en cs de es fr it nl sv pt-br ro
+                                ForceLanguagePriority Prefer Fallback
+                        </Directory>    
+
+                        ErrorDocument 400 /error/HTTP_BAD_REQUEST.html.var
+                        ErrorDocument 401 /error/HTTP_UNAUTHORIZED.html.var
+                        ErrorDocument 403 /error/HTTP_FORBIDDEN.html.var
+                        ErrorDocument 404 /error/HTTP_NOT_FOUND.html.var
+                        ErrorDocument 405 /error/HTTP_METHOD_NOT_ALLOWED.html.var
+                        ErrorDocument 408 /error/HTTP_REQUEST_TIME_OUT.html.var
+                        ErrorDocument 410 /error/HTTP_GONE.html.var
+                        ErrorDocument 411 /error/HTTP_LENGTH_REQUIRED.html.var
+                        ErrorDocument 412 /error/HTTP_PRECONDITION_FAILED.html.var
+                        ErrorDocument 413 /error/HTTP_REQUEST_ENTITY_TOO_LARGE.html.var
+                        ErrorDocument 414 /error/HTTP_REQUEST_URI_TOO_LARGE.html.var
+                        ErrorDocument 415 /error/HTTP_UNSUPPORTED_MEDIA_TYPE.html.var
+                        ErrorDocument 500 /error/HTTP_INTERNAL_SERVER_ERROR.html.var
+                        ErrorDocument 501 /error/HTTP_NOT_IMPLEMENTED.html.var
+                        ErrorDocument 502 /error/HTTP_BAD_GATEWAY.html.var
+                        ErrorDocument 503 /error/HTTP_SERVICE_UNAVAILABLE.html.var
+                        ErrorDocument 506 /error/HTTP_VARIANT_ALSO_VARIES.html.var
+                </IfModule>
+        </IfModule>
+</IfModule>
+
+Como se puede observar es necesario (directiva IfModule) tener activo los módulos negotiation, alias (que están activos por defectos) y include que hay 
+que activarlo:
+
+# a2enmod include
+
+El control de acceso, hace referencia a todos los medios que proporcionan una forma de controlar el acceso a cualquier recurso. 
+La directiva Require proporciona una variedad de diferentes maneras de permitir o denegar el acceso a los recursos. Además puede ser usada junto con 
+las directivas: RequireAll, RequireAny, y RequireNone, estos requerimientos pueden ser combinados de forma compleja y arbitraria, para cumplir cualquiera 
+que sean tus políticas de acceso.
+
+Directiva Require
+Podemos controlar el acceso a cualquier recurso o conjunto de recurso, por ejemplo usando una directiva Directory, con Requiere usando algunas de estas opciones:
+
+Require all granted: El acceso es permitido incondicionalmente.
+Require all denied: El acceso es denegado incondicionalmente.
+Require user userid [userid] ...: El acceso es permitido sólo si los usuarios indicados se han autentificado.
+Require group group-name [group-name] ...: El acceso es permitido sólo a los grupos de usuarios especificados.
+Require valid-user: El acceso es permitido a los usuarios válidos.
+Require ip 10 172.20 192.168.2: El acceso es permitido si se hace desde el conjunto de direcciones especificadas.
+Require host dominio: El acceso es permitido si se hace desde el dominio especificado.
+Require local: El acceso es permitido desde localhost.
+Se puede usar el operador not para indicar la denegación, por ejemplo:
+
+Require not ip 10.0
+Control de acceso en Apache 2.2
+En versiones anteriores de Apache se utilizaban otras directivas para controlar el acceso: Allow, Deny, y Order, están obsoletas y serán quitadas en futuras 
+versiones.
+
+Ejemplo 1
+Por ejemplo en la versión Apache 2.2 podemos encontrar esta configuración:
+
+<Directory "/var/www">
+    Order allow,deny
+    Allow from all
+</Directory>
+Este es un modo Denegar por defecto. Donde le dará opcionalmente una lista de reglas Permitir.
+Luego se marcan las reglas de Permitir, y el acceso de alguien dispuesto debe coincidir al menos con una regla.
+Si alguien recibe permiso de una de las reglas Permitir, puedes rechazarlo con una regla de Negar.
+En Apache 2.4 quedaría:
+
+<Directory "/var/www">
+    Require all granted
+</Directory>
+Otro ejemplo, por ejemplo para no permitir el acceso a fichero .htaccess, podíamos encontrar en Apache 2.2:
+
+<FilesMatch "^\.ht">
+       Order deny,allow
+       Deny from all
+</FilesMatch>
+Este es un modo de permitir por defecto. Donde le dará opcionalmente una lista de reglas de Denegar.
+Luego se verifican las reglas Denegar, para rechazar las solicitudes en función de estas reglas.
+Si alguien es rechazado por una de las reglas de Denegar, puede que lo devuelva con una regla de Permitir.
+En Apache 2.4 quedaría:
+
+<FilesMatch "^\.ht">
+       Require all denied
+</FilesMatch>
+Ejemplo 2
+En Apache 2.2 podríamos tener:
+
+Order Deny,Allow
+Deny from all
+Allow from example.org
+En Apache 2.4 tendremos:
+
+Require host example.org
+
+El servidor web Apache puede acompañarse de distintos módulos para proporcionar diferentes modelos de autenticación.
+La primera forma que veremos es la más simple. Usamos para ello el módulo de autenticación básica que viene instalada “de serie” con cualquier Apache: 
+mod_auth_basic. La configuración que tenemos que añadir en el fichero de definición del Virtual Host a proteger podría ser algo así:
+
+<Directory "/var/www/pagina1/privado">
+    AuthUserFile "/etc/apache2/claves/passwd.txt"
+    AuthName "Palabra de paso"
+    AuthType Basic
+    Require valid-user
+</Directory>
+El método de autentificación básica se indica en la directiva AuthType.
+
+En Directory escribimos el directorio a proteger, que puede ser el raíz de nuestro Virtual Host o un subdirectorio.
+En AuthUserFile ponemos el fichero que guardará la información de usuarios y contraseñas que debería de estar, como en este ejemplo, en un directorio 
+que no sea visitable desde nuestro Apache. Ahora comentaremos la forma de generarlo.
+Por último, en AuthName personalizamos el mensaje que aparecerá en la ventana del navegador que nos pedirá la contraseña.
+Para controlar el control de acceso, es decir, que usuarios tienen permiso para obtener el recurso utilizamos las siguientes directivas: AuthGroupFile, 
+Require user, Require group.
+El fichero de contraseñas se genera mediante la utilidad htpasswd. Su sintaxis es bien sencilla. Para añadir un nuevo usuario al fichero operamos así:
+
+$ htpasswd /etc/apache2/claves/passwd.txt carolina
+New password:
+Re-type new password:
+Adding password for user carolina
+
+Para crear el fichero de contraseñas con la introducción del primer usuario tenemos que añadir la opción -c (create) al comando anterior. Si por error 
+la seguimos usando al incorporar nuevos usuarios borraremos todos los anteriores, así que cuidado con esto. Las contraseñas, como podemos ver a continuación, 
+no se guardan en claro. Lo que se almacena es el resultado de aplicar una función hash:
+
+josemaria:rOUetcAKYaliE
+carolina:hmO6V4bM8KLdw
+alberto:9RjyKKYK.xyhk
+
+Para denegar el acceso a algún usuario basta con que borremos la línea correspondiente al mismo. No es necesario que le pidamos a Apache que vuelva a leer 
+su configuración cada vez que hagamos algún cambio en este fichero de contraseñas.
+
+Si lo que se desea es permitir a un grupo de usuarios, necesitarás crear un archivo de grupo que asocie los nombres de grupos con el de usuario para permitirles 
+el acceso. El formato de este fichero es bastante sencillo, y puedes crearlo con tu editor de texto favorito. El contenido del fichero se parecerá a:
+
+NombreGrupo: usuario1 usuario2 usuario3
+La directiva que tendríamos que utiliazar para inidicar el fichero de grupo sería AuthGroupFile. Y para permitir el acceso a los grupos utilizaríamos:
+
+Require group NombreGrupo
+La principal ventaja de este método es su sencillez. Sus inconvenientes: lo incómodo de delegar la generación de nuevos usuarios en alguien que no sea 
+un administrador de sistemas o de hacer un front-end para que sea el propio usuario quien cambie su contraseña. Y, por supuesto, que dichas contraseñas viajan 
+en claro a través de la red. Si queremos evitar esto último podemos configurtar Apache2 con SSL.
+
+Demostración
+Autentificación básica al directorio www.pagina1.org\privado.
+
+La autentificación tipo digest soluciona el problema de la transferencia de contraseñas en claro sin necesidad de usar SSL. Se aplica una función hash a la 
+contraseña antes de ser enviada sobre la red, lo que resulta más seguro que enviarla en texto plano como en la autenticación básica. El procedimiento, 
+como veréis, es muy similar al tipo básico pero cambiando algunas de las directivas y usando la utilidad htdigest en lugar de htpassword para crear el fichero 
+de contraseñas. El módulo de autenticación necesario suele venir con Apache pero no habilitado por defecto. Para activarlo usamos la utilidad a2enmod y, 
+a continuación reiniciamos el servidor Apache:
+
+a2enmod auth_digest
+systemctl restart apache2 
+Luego incluimos una sección como esta en el fichero de configuración de nuestro Virtual Host:
+
+<Directory "/var/www/pagina1/privado">
+    AuthType Digest
+    AuthName "dominio"
+    AuthUserFile "/etc/claves/digest.txt"
+    Require valid-user
+</Directory>
+
+Como vemos, es muy similar a la configuración necesaria en la autenticación básica. La directiva AuthName, que en la autenticación básica se usaba para mostrar 
+un mensaje en la ventana que pide el usuario y contraseña, ahora se usa también para identificar un nombre de dominio (realm) que debe de coincidir con el que 
+aparezca después en el fichero de contraseñas. Dicho esto, vamos a generar dicho fichero con la utilidad htdigest:
+
+$ htdigest -c /etc/claves/digest.txt dominio josemaria
+Adding password for josemaria in realm dominio.
+New password:
+Re-type new password:
+
+Al igual que ocurría con htpasswd, la opción -c (create) sólo debemos de usarla al crear el fichero con el primer usuario. Luego añadiremos los restantes 
+usuarios prescindiendo de ella. A continuación vemos el fichero que se genera después de añadir un segundo usuario:
+
+josemaria:dominio:8d6af4e11e38ee8b51bb775895e11e0f
+gemma:dominio:dbd98f4294e2a49f62a486ec070b9b8c
+
+Demostración
+Autentificación digest al directorio www.pagina2.org\privado.
+
+Políticas de acceso en Apache 2.2
+Como hemos visto anteriormente el control de acceso en versiones anteriores de Apache2, se hacía con las directivas Order, Allow y Deny. Además teníamos otra directiva 
+Satisfy (Nota: Esta directiva no existe en Apache 2.4) que nos permitía controlar como el se debía comportar el servidor cuando tenemos varios instrucciones 
+de control de acceso (allow, deny , require). de esta manera:
+
+-Satisfy All: Se tenían que cumplir todas las condiciones para obtener el acceso.
+-Satisfy Any: Bastaba con que se cumpliera una de las condiciones.
+
+Ejemplo:
+
+<Directory /dashboard>
+    Order deny,allow
+    Deny from all
+    Allow from 10.1
+    Require group admins
+    Satisfy any
+</Directory>    
+El uso de esas directiva hacía muy complicado hacer políticas de acceso complejas.
+
+Políticas de acceso en Apache 2.4
+En la nueva versión el control de acceso se determinan con la directiva Require, y las políticas de acceso la podemos indicar usando las directivas:
+
+RequireAll: Todas las condiciones dentro del bloque se deben cumplir para obtener el acceso.
+RequireAny: Al menos una de las condiciones en el bloque se debe cumplir.
+RequireNone: Ninguna de las condiciones se deben cumplir para permitir el acceso.
+El ejemplo anterior quedaría:
+
+<Directory /dashboard>
+    <RequireAny>
+        Require ip 10.1
+        Require group admins
+    </RequireAny>
+</Directory>    
+
+Ejemplo
+En Apache 2.2 podríamos tener:
+
+Order Allow,Deny
+Allow from all
+Deny from 212.100.100.100
+En Apache 2.4 lo podríamos indicar de dos formas distintas:
+
+<RequireNone>
+    Require ip 212.100.100.100
+</RequireNone>
+O también:
+
+<RequireAll>
+    Require all granted
+    Require not ip 212.100.100.100
+</RequireAll>
+
+Ejemplo complejo
+Podemos crear varios bloques como vemos en el siguiente ejemplo:
+
+<RequireAny>
+    <RequireAll>
+        Require user root
+        Require ip 123.123.123.123
+    </RequireAll>
+    <RequireAll>
+        <RequireAny>
+            Require group sysadmins
+            Require group useraccounts
+            Require user anthony
+        </RequireAny>
+        <RequireNone>
+            Require group restrictedadmin
+            Require host bad.host.com
+        </RequireNone>
+    </RequireAll>
+</RequireAny>
+
+Demostración
+Tenemos un recurso que para acceder tenemos que autentificarnos, además a ese recurso sólo puedo acceder desde la red interna. Puede implementar dos políticas:
+-Se deben cumplir las dos: el recurso sólo es accesible desde la red interna y habiéndonos autentificados.
+-Se debe cumplir una de las dos: el recurso es accesible de la red interna, sin necesidad de autentificarnos, y es accesible desde la red externa pero 
+nos debemos autentificar.
+
+Un fichero .htaccess (hypertext access), también conocido como archivo de configuración distribuida, es un fichero especial, popularizado por el Servidor HTTP 
+Apache que nos permite definir diferentes directivas de configuración para cada directorio (con sus respectivos subdirectorios) sin necesidad de editar 
+el archivo de configuración principal de Apache.
+
+Para permitir el uso de los ficheros .htaccess o restringir las directivas que se puedn aplicar usamos ela directiva AllowOverride, que puede ir acompañada 
+de una o varias opciones:
+
+All: Se pueden usar todas las directivas permitidas.
+None: Se ignora el fichero .htaccess. Valor por defecto.
+AuthConfig: Directivas de autentificación y autorización: AuthName, AuthType, AuthUserFile, Require, …
+FileInfo: Directivas relacionadas con el mapeo de URL: redirecciones, módulo rewrite, …
+Indexes: Directiva que controlan la visualización de listado de ficheros.
+Limit: Directivas para controlar el control de acceso: Allow, Deny y Order.
+
+Uno de los aspectos característicos del servidor HTTP Apache es su modularidad, Apache tiene un sinfín de características adicionales que si estuvieran siempre 
+incluidas, harían de él un programa demasiado grande y pesado. En lugar de esto, Apache se compila de forma modular y se cargan en memoria sólo los módulos 
+necesarios en cada caso.
+
+Los módulos se guardan en la configuración de apache2 en dos directorios:
+
+/etc/apache2/mods-available/: Directorio que contiene los módulos disponibles en la instalación actual.
+/etc/apache2/mods-enabled/: Directorio que incluye mediante enlaces simbólicos al directorio anterior, los módulos que se van a cargar en memoria la 
+próxima vez que se inicie Apache.
+
+Módulos de apache
+Los módulos de apache se pueden encontrar de dos maneras, compilados dentro del ejecutable apache2 o compilados de forma individual como una biblioteca de 
+enlace dinámico (con extensión .so). Para saber qué módulos incluye el ejecutable de nuestra instalación de apache, podemos utilizar la siguiente instrucción:
+
+# apache2 -l    
+Compiled in modules:
+  core.c
+  mod_so.c
+  mod_watchdog.c
+  http_core.c
+  mod_log_config.c
+  mod_logio.c
+  mod_version.c
+  mod_unixd.c
+  
+El resto de módulos disponibles para cargar en tiempo de ejecución se encuentran en el
+directorio /usr/lib/apache2/modules/:
+
+# ls /usr/lib/apache2/modules/
+
+httpd.exp        mod_dav.so        mod_proxy_fcgi.so
+mod_access_compat.so    mod_dbd.so        mod_proxy_fdpass.so
+mod_actions.so        mod_deflate.so        mod_proxy_ftp.so
+...
+Pueden parecer muchos, pero son sólo los módulos de la instalación estándar y se incluyen dentro del paquete apache2-data. Hay otros muchos módulos que se 
+distribuyen en paquetes separados, que en debian reciben el nombre libapache2-mod-*:
+
+# apt-cache search libapache2-mod
+libapache2-mod-auth-ntlm-winbind - apache2 module for NTLM authentication against Winbind
+libapache2-mod-upload-progress - upload progress support for the Apache web server
+libapache2-mod-xforward - Apache module implements redirection based on X-Forward response header
+...
+
+Utilización de módulos
+Si vamos al directorio donde se ubican los módulos disponibles de Apache /etc/apache2/mods-available y hacemos un
+listado encontramos ficheros *.load y *.conf.
+
+Los ficheros con extensión load suelen incluir una línea con la directiva LoadModule, por ejemplo:
+
+# cat userdir.load 
+LoadModule userdir_module /usr/lib/apache2/modules/mod_userdir.so
+Además de cargar el módulo, en muchos casos es necesario realizar alguna configuración mediante directivas, por lo que en esos casos se existe un fichero 
+con extensión .conf.
+
+Si queremos que Apache utilice cualquier módulo, lo que tendríamos que hacer es un enlace simbólico del fichero de extensión .load (y del .conf si existe) 
+en el directorio /etc/apache2/mods-enabled. Este enlace lo podemos hacer con la instrucción a2enmod, por ejemplo:
+
+# a2enmod userdir
+Enabling module userdir.
+To activate the new configuration, you need to run:
+  systemctl restart apache2
+Para desactivarlo (borrar el enlace simbólico) utilizamos la instrucción a2dismod. después de utilizar estos comandos hay que reiniciar el servicio.
+
+Módulos activos por defecto
+Para ver los módulos activados en apache2:
+
+# apache2ctl -M
+
+Loaded Modules:
+ core_module (static)
+ so_module (static)
+ watchdog_module (static)
+ http_module (static)
+ log_config_module (static)
+ ...
+ 
+En sistemas con múltiples usuarios, cada usuario puede tener un sitio web en su directorio home usando el módulo UserDir. Los visitantes de una 
+URL http://example.com/~username/ recibirán el contenido del directorio home del usuario “username”, en el subdirectorio especificado por la directiva UserDir.
+
+La directiva UserDir la podemos modificar en el fichero /etc/apache2/mods-available/userdir.conf, y se puede configurar de distintas maneras:
+
+UserDir public_html: Valor por defecto, la URL http://example.com/~rbowen/file.html se traducirá en la ruta del fichero /home/rbowen/public_html/file.html.
+UserDir /var/html: La URL http://example.com/~rbowen/file.html se traducirá en la ruta del fichero /var/html/rbowen/file.html.
+UserDir /var/www/*/docs: La URL http://example.com/~rbowen/file.html se traducirá en la ruta del fichero /var/www/rbowen/docs/file.html
+UserDir public_html /var/html: Para la URL http://example.com/~rbowen/file.html, Apache buscará ~rbowen. Si no lo encuentra, Apache buscará rbowen en /var/html.
+
+Desactivando userdir para algunos usuarios
+Por ejemplo, con la directiva UserDir disabled root desactivamos la funcionalidad que ofrece el módulo para el usuario root.
+
+Configurando el directorio de acceso de cada usuario
+Como vemos en el fichero /etc/apache2/mods-available/userdir.conf debemos configurar las opciones del directorio al que se accede al pedir la página del usuario.
+
+<Directory /home/*/public_html>
+    AllowOverride FileInfo AuthConfig Limit Indexes
+    Options MultiViews Indexes SymLinksIfOwnerMatch IncludesNoExec
+    Require method GET POST OPTIONS
+</Directory>
+
+Activación del módulo
+Para activar el módulo:
+
+# a2enmod userdir
+Reiniciamos el servidor, creamos una carpeta public_html en el home del usuario y creamos un fichero index.html. Y podemos probar el acceso a la 
+URL http://www.pagina1.org/~usuario.
+
+WebDAV (“Edición y versionado distribuidos sobre la web“) es un protocolo para hacer que la www sea un medio legible y editable. 
+Este protocolo proporciona funcionalidades para crear, cambiar y mover documentos en un servidor remoto (típicamente un servidor web). 
+Esto se utiliza sobre todo para permitir la edición de los documentos que sirve un servidor web, pero puede también aplicarse a sistemas de almacenamiento 
+generales basados en web, que pueden ser accedidos desde cualquier lugar. La mayoría de los sistemas operativos modernos proporcionan soporte para WebDAV, 
+haciendo que los ficheros de un servidor WebDAV aparezcan como almacenados en un directorio local.
+
+Configuración de un servidor WebDAV
+Para crear un directorio en nuestro servidor Web que pueda ser accesible por medio de un cliente WebDAV debemos activar los módulos dav y dav_fs.
+
+# a2enmod dav dav_fs
+Lo primero es indicar el nombre de la base de datos de lock que se utilizará, mediante la directiva DAVLockDB. Es importante tener especial cuidado con esta 
+directiva, ya que es frecuente fuente de errores.
+
+DavLockDB /tmp/DAVLockDB
+Lo que indica la directiva no es ni el nombre de un archivo ni el de una carpeta, si no la parte inicial del nombre de un archivo. El módulo creará un archivo 
+de nombre DAVLockDB.orig y otro de nombre DAVLockDB.xxxxx dentro de la carpeta indicada, para lo cual es necesario que el usuario “Apache” tenga permisos 
+de escritura en ella.
+
+A continuación creamos una sección Directory para el directorio que queremos acceder por WebDav y activar el modo WebDav con la directiva dav on. Además por seguridad se debe autentificar el acceso, por lo que quedaría parecido a esto:
+
+    DavLockDB /tmp/DavLock
+    <Directory /var/www/webdav>
+            dav on
+            Options Indexes FollowSymLinks MultiViews
+            AllowOverride None
+            AuthType digest
+            AuthUserFile "/etc/apache2/digest.txt"
+            AuthName "Dominio"
+            Require valid-user
+    </Directory>
+	
+Por último podemos comprobar el acceso al servidor WebDAV con un cliente.
+
+El módulo rewrite nos va a permitir acceder a una URL e internamente estar accediendo a otra. Ayudado por los ficheros .htaccess, el módulo rewrite nos va a 
+ayudar a formar URL amigables que son más consideradas por los motores de búsquedas y mejor recordadas por los humanos. Por ejemplo estas URL:
+
+www.dominio.com/articulos/muestra.php?id=23
+www.dominio.com/pueblos/pueblo.php?nombre=utrera
+
+Es mucho mejor escribirlas como:
+
+www.dominio.com/articulos/23.php
+www.dominio.com/pueblos/utrera.php
+
+Ejemplo 1: Cambiar la extensión de los ficheros
+Si tenemos el siguiente fichero php operacion.php, podríamos usarlo de la siguiente manera:
+
+    http://www.pagina1.org/operacion.php?op=suma&op1=6&op2=8
+Y si queremos reescribir la URL y que usemos en vez de php html, de esta forma:
+
+    http://www.pagina1.org/operacion.html?op=suma&op1=6&op2=8
+Para ello activamos el mod_rewite, y escribimos un .htaccess de la siguiente manera:
+
+    Options FollowSymLinks
+    RewriteEngine On
+    RewriteBase /
+    RewriteRule ^(.+).html$ $1.php [nc]
+El flag [nc] lo ponemos para no distinguir entre mayúsculas y minúsculas.
+
+Esto puede ser penalizado por los motores de búsqueda ya que podemos acceder a la misma página con dos URL distintas, para solucionar esto podemos hacer 
+una redirección:
+
+    RewriteRule ^(.+).html$ $1.php [r,nc]
+	
+Ejemplo 2: Crear URL amigables
+Creando una URL amigable podríamos llamar a este fichero de la siguiente manera:
+
+    http://www.pagina1.org/suma/8/6
+Escribimos un .htaccess de la siguiente manera:
+
+    Options FollowSymLinks
+    RewriteEngine On
+    RewriteBase /
+    RewriteRule ^([a-z]+)/([0-9]+)/([0-9]+)$ operacion.php?op=$1&op1=$2&op2=$3
+	
+Ejemplo 3: Uso del RewriteCond
+La directiva RewriteCond nos permite especificar una condición que si se cumple se ejecuta la directiva RewriteRule posterior. Se pueden poner varias 
+condiciones con RewriteCond, en este caso cuando se cumplen todas se ejecuta la directiva RewriteRule posterior.
+
+Como vemos en la documentación podemos preguntar por varios parámetros, entre los que destacamos los siguientes:
+
+%{HTTP_USER_AGENT}: Información del cliente que accede.
+Por ejemplo, podemos mostrar una página distinta para cada navegador:
+
+  RewriteCond %{HTTP_USER_AGENT} ^Mozilla
+  RewriteRule ^/$ /index.max.html [L]
+
+  RewriteCond %{HTTP_USER_AGENT} ^Lynx
+  RewriteRule ^/$ /index.min.html [L]
+
+  RewriteRule ^/$ /index.html [L]
+%{QUERY_STRING}: Guarda la cadena de parámetros de una URL dinámica.Por ejemplo:
+
+Teníamos un fichero index.php que recibía un parámetro lang, para traducir el mensaje de bienvenida.
+
+  http://www.pagina1.org/index.php?lang=es
+Actualmente hemos cambiado la forma de traducir, y se han creado distintos directorios para cada idioma y dentro un index.php con el mensaje traducido.
+
+  http://www.pagina1.org/es/index.php
+Sin embargo se quiere seguir utilizando la misma forma de traducir.
+
+  RewriteCond %{QUERY_STRING} lang=(.*)
+  RewriteRule ^index.php$ /%1/$1
+%{REMOTE_ADDR}: Dirección de destino. Por ejemplo puedo denegar el acceso a una dirección:
+
+  RewriteCond %{REMOTE_ADDR} 145.164.1.8
+  RewriteRule ^(.*)$ / [R,NC,L]
+  
+Los servidores web pueden ser configurado para manejar las peticiones de diferente forma, desde el punto de vista en que son creados y manejados los subprocesos 
+necesarios que atienden a cada cliente conectado a este. En esta unidad vamos a explicar los MPM (Módulos de multiprocesamiento) que nos permiten configurar el 
+servidor Web para gestionar las peticiones que llegan al servidor.
+
+event
+Por defecto apache2 se configura con el MPM event, podemos ver el MPM que estamos utilizando con la siguiente instrucción:
+
+# apachectl -V
+...
+Server MPM:     event
+...
+El MPM event en versiones anteriores de apache2 era un módulo experimental, pero en Apache 2.4 se considera estable y mejora el funcionamiento del PMP worker. 
+Este módulo usa procesos y al mismo tiempo hace uso de threads (también llamados hilos), es decir, combina las técnicas de forking y threading. Al iniciar 
+Apache Event se crean varios procesos hijo y a su vez cada proceso hijo emplea varios threads. Con esto se consigue que cada proceso hijo pueda manejar varias 
+peticiones simultaneas gracias a los threads.
+
+En /etc/apache2/mods-availables/mpm_event.conf podemos configurar las opciones de configuración de este módulo:
+
+StartServers: Número de procesos hijos que se crean al iniciar el servidor, por defecto 2.
+MinSpareThreads: Mínimo número de hilos esperando para responder, por defecto 25.
+MaxSpareThreads: Máximo número de hilos esperando para responder, por defecto 75.
+ThreadLimit: Límite superior del número de hilos por proceso hijo que pueden especificarse, por defecto 64.
+ThreadsPerChild: Número de hilos de cada proceso, por defecto 25.
+MaxRequestWorkers: Límite de peticiones simultaneas que se pueden responder, por defecto 150.
+MaxConnectionsPerChild: Límite en el número de peticiones que un proceso hijo puede atender durante su vida,por defecto 0 (no se indica).
+
+prefork
+Este módulo crea diferentes procesos independientes para manejar las diferentes peticiones. Esta técnica de crear varios procesos se la denomina forking, 
+de ahí el nombre mpm-prefork. Al iniciar Apache Prefork se crean varios procesos hijo y cada uno puede responder una petición.
+
+Para cambiar de MPM tenemos que desactivar el actual y activar el nuevo módulo::
+
+# a2dismod mpm_event
+# a2enmod mpm_prefork
+# service apache2 restart    
+
+# apachectl -V
+...
+Server MPM:     prefork
+...
+En /etc/apache2/mods-availables/mpm_prefork.conf podemos configurar las opciones de configuración de este módulo:
+
+StartServers: Número de procesos hijos que se crean al iniciar el servidor, por defecto 5.
+MinSpareServers: Mínimo número de procesos esperando para responder, por defecto 5.
+MaxSpareServers: Máximo número de procesos esperando para responder, por defecto 10.
+MaxRequestWorkers: Límite de peticiones simultaneas que se pueden responder, por defecto 150.
+MaxConnectionsPerChild: Límite en el número de peticiones que un proceso hijo puede atender durante su vida,por defecto 0 (no se indica).
+
+Apache2 y módulo PHP
+Instalamos apache2 y el módulo que permite que los procesos de apache2 sean capaz de ejecutar el código PHP:
+
+apt install apache2 php7.0 libapache2-mod-php7.0
+Cuando hacemos la instalación se desactiva el MPM event y se activa el prefork:
+
+...
+Module mpm_event disabled.
+Enabling module mpm_prefork.
+apache2_switch_mpm Switch to prefork
+...
+Si vemos el contenido del fichero de configuración del módulo php de apache2, /etc/apache2/mods-available/php7.0.conf, nos encontramos las siguientes líneas:
+
+<FilesMatch ".+\.ph(p[3457]?|t|tml)$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+...
+Donde se crea un nuevo manejador, que hace que los ficheros cuya extensión es php sean gestionados por el módulo que interpreta el código php.
+
+Configuración de php
+La configuración de php está dividida en distintos directorios para las distintas formas de ejecutar el código php:
+
+/etc/php/7.0/cli: Configuración de php para php7.0-cli, cuando se utiliza php desde la línea de comandos.
+/etc/php/7.0/apache2: Configuración de php para apache2 cuando utiliza el módulo.
+/etc/php/7.0/fpm: Configuración de php para php-fpm.
+/etc/php/7.0/mods-available: Módulos disponibles de php que puedes estar configurados en cualquiera de los escenarios anteriores.
+
+Si nos fijamos en la configuración de php para apache2:
+
+/etc/php/7.0/apache2/conf.d: Módulos instalados en esta configuración de php (enlaces simbólicos a /etc/php/7.0/mods-available).
+/etc/php/7.0/apache2/php.ini: Configuración de php para este escenario.
+PHP-FPM
+FPM (FastCGI Process Manager) es una implementación alternativa al PHP FastCGI. FPM se encarga de interpretar código PHP. Aunque normalmente se utiliza junto 
+a un servidor web (Apache2 o ngnix) vamos a hacer en primer lugar una instalación del proceso y vamos a estudiar algunos parámetros de configuración y 
+estudiar su funcionamiento.
+
+Para instalarlo en Debian 9:
+
+apt install php7.0-fpm php7.0
+Ahora podemos desactivar el módulo de php, y volver a activar el MPM event.
+
+a2dismod php7.0
+a2dismod mpm_prefork
+a2enmod mpm_event
+Configuración
+Con esto hemos instalado php 7.0 y php-fpm. Veamos primeros algunos ficheros de configuración de php:
+
+Si nos fijamos en la configuración de php para php-fpm:
+
+/etc/php/7.0/fpm/conf.d: Módulos instalados en esta configuración de php (enlaces simbólicos a /etc/php/7.0/mods-available).
+/etc/php/7.0/fpm/php-fpm.conf: Configuración general de php-fpm.
+/etc/php/7.0/fpm/php.ini: Configuración de php para este escenario.
+/etc/php/7.0/fpm/pool.d: Directorio con distintos pool de configuración. Cada aplicación puede tener una configuración distinta (procesos distintos) de php-fpm.
+Por defecto tenemos un pool cuya configuración la encontramos en /etc/php/7.0/fpm/pool.d/www.conf, en este fichero podemos configurar muchos parámetros, 
+los más importantes son:
+
+[www]: Es el nombre del pool, si tenemos varios, cada uno tiene que tener un nombre.
+user y grorup: Usuario y grupo con el que se va ejecutar los procesos.
+listen: Se indica el socket unix o el socket TCP donde van a escuchar los procesos:
+
+Por defecto, escucha por un socket unix:
+listen = /run/php/php7.0-fpm.sock
+Si queremos que escuche por un socket TCP:
+listen = 127.0.0.1:9000
+En el caso en que queramos que escuche en cualquier dirección:
+listen = 9000
+Directivas de procesamiento, gestión de procesos:
+
+pm: Por defecto igual a dynamic (el número de procesos se crean y destruyen de forma dinámica). Otros valores: static o ondemand.
+Otras directivas: pm.max_children, pm.start_servers, pm.min_spare_servers,…
+pm.status_path = /status: No es necesaria, pero vamos a activar la URL de status para comprobar el estado del proceso.
+
+Por último reiniciamos el servicio:
+
+systemctl restart php7.0-fpm
+Configuración de Apache2 con php-fpm
+Necesito activar los siguientes módulos:
+
+a2enmod proxy proxy_fcgi
+Activarlo para cada virtualhost
+Podemos hacerlo de dos maneras:
+
+Si php-fpm está escuchando en un socket TCP:
+
+  ProxyPassMatch ^/(.*\.php)$ fcgi://127.0.0.1:9000/var/www/html/$1
+Si php-fpm está escuchando en un socket UNIX:
+
+  ProxyPassMatch ^/(.*\.php)$ unix:/run/php/php7.0-fpm.sock|fcgi://127.0.0.1/var/www/html
+Otra forma de hacerlo es la siguiente:
+
+Si php-fpm está escuchando en un socket TCP:
+
+  <FilesMatch "\.php$">
+      SetHandler "proxy:fcgi://127.0.0.1:9000"
+  </FilesMatch>
+Si php-fpm está escuchando en un socket UNIX:
+
+  <FilesMatch "\.php$">
+         SetHandler "proxy:unix:/run/php/php7.0-fpm.sock|fcgi://127.0.0.1/"
+  </FilesMatch>
+Activarlo para todos los virtualhost
+Tenemos a nuestra disposición un fichero de configuración php7.0-fpm en el directorio /etc/apache2/conf-available. Por defecto funciona cuando php-fpm 
+está escuchando en un socket UNIX, si escucha por un socket TCP, hay que cambiar la línea:
+
+SetHandler "proxy:unix:/run/php/php7.0-fpm.sock|fcgi://localhost"
+por esta:
+
+SetHandler "proxy:fcgi://127.0.0.1:9000"
+Por último activamos la configuración:
+
+a2enconf php7.0-fpm
+
+Apache2 y módulo wsgi
+Instalamos el módulo de apache2 que nos permite ejecutar código python: libapache2-mod-wsgi si vamos a trabajar con python2 o libapache2-mod-wsgi-py3 si 
+trabajamos con python3.
+
+Veamos un ejemplo de configuración para una aplicación django. Suponemos que el fichero wsgi se encuentra en el directorio: /var/www/html/mysite/mysite/wsgi.py 
+y configuramos apache2 de la siguiente manera:
+
+<VirtualHost *>
+    ServerName www.example.com
+    DocumentRoot /var/www/html/mysite
+    WSGIDaemonProcess mysite user=www-data group=www-data processes=1 threads=5 python-path=/var/www/html/mysite
+    WSGIScriptAlias / /var/www/html/mysite/mysite/wsgi.py
+
+    <Directory /var/www/html/mysite>
+            WSGIProcessGroup mysite
+            WSGIApplicationGroup %{GLOBAL}
+            Require all granted
+    </Directory>
+</VirtualHost>
+
+Usando servidores wsgi
+Otra forma de ejecutar código python es usar servidores de aplicación wsgi. Tenemos a nuestra disposición varios servidores: A Comparison of Web Servers for 
+Python Based Web Applications. Realmente usamos apache2 como proxy inverso que envía la petición python al servidor WSGI que estemos utilizando.
+
+uwsgi
+Para instalarlo en Debian 9 Stretch:
+
+apt install uwsgi
+apt install uwsgi-plugin-python3
+También lo podemos instalar con pip en un entorno virtual.
+
+Despliegue de una aplicación django con uwsgi
+
+Hemos creado una aplicación django en el directorio: /home/debian/myapp para desplegarla con uwsgi ejecutamos:
+
+uwsgi --http :8080 --plugin python --chdir /home/debian/myapp --wsgi-file myapp/wsgi.py --process 4 --threads 2 --master 
+Otra alternativa es crear un fichero .ini de configuración, ejemplo.ini de la siguiente manera:
+
+[uwsgi]
+http-socket = :8080
+chdir = /home/debian/myapp 
+wsgi-file = /home/debian/myapp/myapp/wsgi.py
+processes = 4
+threads = 2
+plugin = python3
+Y para ejecutar el servidor, simplemente:
+
+uwsgi ejemplo.ini
+De esta forma puedo tener varios ficheros de configuración del servidor uwsgi para las distintas aplicaciones python que sirva el servidor.
+
+Podemos tener los ficheros de configuración en /etc/uwsgi/apps-available y para habilitar podemos crear un enlace simbólico a estos ficheros en 
+/etc/uwsgi/apps-enabled.
+
+En el ejemplo anterior hemos usado la opción http para indicar que se va a devolver una respuesta HTTP, podemos usar varias opciones:
+
+http: Se comporta como un servidor http.
+http-socket: Si vamos a utilizar un proxy inverso usando el servidor uwsgi.
+socket: La respuesta ofrecida por el servidor no es HTTP, es usando el protocolo uwsgi.
+Existen muchas más opciones que puedes usar: http://uwsgi-docs.readthedocs.io/en/latest/Options.html.
+
+Apache con uwsgi
+Configuración usando HTTP
+Necesitamos instalar el módulo de proxy:
+
+# a2enmod proxy proxy_http
+La configuración del virtual host podría quedar:
+
+<VirtualHost *:80> 
+    ServerAdmin webmaster@localhost
+    ProxyPass / http://localhost:8080/
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+Como vemos el contenido estático es servido por Apache y el procesamiento de python se pasa al servidor uwsgi.
+
+Configuración usando uWSGI
+En este caso en el fichero de configuración de uwsgi, ejemplo.ini, tendríamos que cambiar el modo de funcionamiento:
+
+...
+socket = 127.0.0.1:3032
+...
+Para la comunicación con uwsgi, apache necesita un módulo llamado proxy_uwsgi:
+
+# apt install libapache2-mod-proxy-uwsgi
+# a2enmod proxy_uwsgi
+Y creamos el fichero de configuración para el servidor virtual que servirá a aplicación django.
+
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    ProxyPass / uwsgi://127.0.0.1:3032/
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+
+Cada vez es más necesario cifrar el contenido que se trasmite entre el cliente y el servidor, este proceso nos permite asegurar por ejemplo el proceso de autenticación
+de usuarios para evitar que alguien capture una contraseña de usuario y acceda de forma fraudulenta.
+
+El cifrado de la comunicación entre el navegador y el servidor web se hace mediante el protocolo HTTPS, que tiene las siguientes características principales:
+
+-Utiliza el protocolo SSL (actualmente TLS) para el cifrado de datos.
+-El servidor utiliza por defecto el puerto 443/tcp.
+-Utiliza mecanismos de cifrado de clave pública y las claves públicas se denominan certificados.
+-El formato de los certificados está especificado por el estándar X.509 y normalmente son emitidos por una entidad denominada Autoridad Certificadora 
+(CA por sus siglas en inglés).
+-En el caso de HTTPS, la función principal de la CA es demostrar la autenticidad del servidor y que pertenece legítimamente a la persona u organización que lo 
+utiliza.
+-Dependiendo de los criterios utilizados para comprobar la autenticidad del servidor se emiten diferentes tipos de certificados X.509 (actualmente se usa el 
+llamado Extended Validation Certificate).
+-El navegador contiene una lista de certificados de CA en las que confía y acepta inicialmente sólo los certificados de los servidores emitidos por alguna de 
+estas CA.
+-Una vez aceptado el certificado de un servidor web, el navegador utiliza éste para cifrar los datos que quiere enviar al servidor mediante el protocolo HTTPS 
+y cuando llegan al servidor sólo éste podrá descifrarlos ya que es el único que posee la clave privada que los descifra.
+
+Aunque en los últimos tiempos se está poniendo de moda Let’s Encrypt, que es una autoridad de certificación que proporciona certificados X.509 gratuitos para 
+el cifrado de Seguridad de nivel de transporte (TLS), la utilización de un cliente llamado Certbot que automatiza todo el ciclo de vida de la gestión de 
+certificados: obtención, renovación, revocación, instalación en el servidor web,… nos dificulta estudiar en profundidad el proceso de gestionar nuestro propios 
+certificados.
+
+Por lo tanto vamos a usar la CA llamada CAcert que nos permite realizar un proceso similar al que debemos hacer si gestionamos nuestros certificados con 
+cualquier CA comercial.
+
+El lema de CAcert es Free digital certificates for everyone y es que la utilización de certificados emitidos por CA comerciales no es posible para todos los 
+sitios de Internet debido a su coste, lo que los limita su uso a transacciones económicas o sitios con datos relevantes. CAcert es una organización sin ánimo 
+de lucro que mantiene una infraestructura equivalente a una CA comercial aunque con ciertas limitaciones.
+
+Los pasos que hay que dar para utilizar un certificado X.509 emitido por CAcert son los siguientes:
+
+Darse de alta como usuario en el sitio web.
+Dar de alta el dominio para el que queremos obtener el certificado. (opción Domains -> Add)
+CAcert verifica que podemos hacer uso legítimo del dominio enviando un mensaje de correo electrónico.
+Dar de alta el certificado de un servidor mediante una solicitud de firma certificado (CSR).
+Configurar el servidor web con el certificado X.509 emitido por la CA.
+Instalación del certificado raíz de CAcert
+Una limitación que tiene el uso de este CA, es que su certificado raíz no está instalado por defecto en los navegadores, por lo tanto tenemos que instalarlo 
+manualmente. Para ello, simplemente vamos a la página web de CAcert y en la opción Certificado raíz podemos descargar la versión Certificado Raíz (Formato PEM). A continuación marcamos la opción: Confiar en esta CA para identificar sitios web y ya la tenemos instalada.
+
+Este proceso nos puede ayudar a entender la circunstancia de que una empresa tenga su propia CA para gestionar sus propios certificados y ,por ejemplo, 
+sus empleados tengan que instalar el certificado raíz de una forma similar.
+
+Creación del CSR
+CSR son las siglas de Certificate Signing Request o solicitud de firma de certificado. En primer lugar necesitamos generar una clave privada RSA de 4096 bits 
+mediante la instrucción:
+
+  # openssl genrsa 4096 > /etc/ssl/private/ssl-cert.key
+Modificamos de forma apropiada los propietarios y permisos:
+
+# chown root:ssl-cert /etc/ssl/private/ssl-cert.key
+# chmod 640 /etc/ssl/private/ssl-cert.key
+Utilizando la clave privada, generamos una CSR mediante la instrucción:
+
+# openssl req -new -key /etc/ssl/private/ssl-cert.key -out /etc/ssl/private/midominio.csr
+El CSR contiene información que será incluida finalmente en el certificado SSL, como por ejemplo tu nombre o el de al empresa, la dirección, el país de 
+residencia o el common name (dominio para el que es generado el SSL), además de estos datos también incluirá un clave pública que será incluida también en 
+tu certificado.
+
+Este fichero csr es el que enviamos a la CA a través del formulario web (opción Server Certificates -> New), que lo procesa y obtiene a partir de él un 
+certificado X.509 compatible con nuestra clave privada, pero emitido por la CA.
+
+El certificado que descargamos lo guardamos en el fichero /etc/ssl/certs/midominio-cacert.pem.
+
+Vamos a configurar el acceso con el protocolo HTTPS a prueba.josedomingo.org.
+
+Lo primero que tenemos que hacer es activar el módulo SSL:
+
+# a2enmod ssl
+A continuación vamos a crear un virtual host para nuestro FQDN a partir del fichero por defecto para la configuración de HTTPS, en el directorio 
+/etc/apache2/sites-available, ejecutamos:
+
+# cp default-ssl.conf prueba-ssl.conf
+Y lo configuramos de forma adecuada:
+
+...
+Servername prueba.josedomingo.org
+DocumentRoot /var/www/prueba
+...
+SSLEngine on
+SSLCertificateFile /etc/ssl/certs/prueba-cacert.pem
+SSLCertificateKeyFile /etc/ssl/private/ssl-cert.key
+...
+Con la directiva SSLEngine activamos el uso de HTTPS, SSLCertificateFile nos permite indicar el certificado emitido por la CA y con SSLCertificateKeyFile 
+indicamos nuestra clave privada.
+
+Finalmente activamos el sitio:
+
+# a2ensite prueba-ssl.conf
+Redirigiendo el trafico HTTP a HTTPS
+Podemos hacer una redirección para que cuando accedamos con HTTP se solicite el recurso utilizando HTTPS. Para ello en el fichero de configuración del 
+virtual host /etc/apache2/sites-available/prueba.conf podemos incluir un redirect:
+
+...
+redirect premanent / https://prueba.josedomingo.org
+...
+Si tenemos activo el módulo rewrite también podemos hacer la redirección con la siguiente configuración:
+
+...
+RewriteEngine On
+RewriteCond %{HTTPS} !on
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+...
+
+modSecurity es un firewall de aplicaciones Web que se ejecuta como módulo del servidor web Apache, provee protección contra diversos ataques hacia aplicaciones 
+Web y permite monitorizar tráfico HTTP, así como realizar análisis en tiempo real sin necesidad de hacer cambios a la infraestructura existente.
+
+Instalación de modSecurity
+Para instalar y activar el módulo ejecutamos:
+
+# apt-get install libapache2-mod-security2
+Por defecto el módulo trae una configuración recomendado, para activarla le cambiamos el nombre:
+
+# cd /etc/modsecurity
+# mv modsecurity.conf-recommended modsecurity.conf
+Cuando reiniciamos el servicio, se ha creado un nuevo fichero de log, donde mod_security va a guardar información detallada de las peticiones y respuestas para 
+posibles auditorias: /var/log/apache2/modsec_audit.log.
+
+Por defecto la configuración de modsecurity solo permite la detención de los ataques, pero no los evita. En el fichero de configuración 
+/etc/modsecurity/modsecurity.conf, podemos encontrar:
+
+SecRuleEngine DetectionOnly
+Podemos modificar otras directivas:
+
+SecResponseBodyAccess: Podemos desactivarla para evitar que se guarde el cuerpo de la respuesta.
+SecRequestBodyLimit: Podemos especificar el tamaño máximo de los datos POST.
+SecRequestBodyNoFilesLimit: De forma similar podemos indicar el tamaño de los datos POST menos el tamaño de los ficheros de subida. Este valor debe ser lo más 
+pequeño posible (128K) (se supone que si no tenemos en cuenta los ficheros subidos los datos que se mandan por POST no deben ser muy grandes).
+SecRequestBodyInMemoryLimit: Indica el tamaño de RAM que se utiliza para cachear la petición. Variar este parámetro puede tener consecuencia en el rendimiento 
+del servidor.
+Activando las reglas de detección
+Por defecto tenemos un conjunto de reglas activadas, que llamamos CRS (Core Rules Set). Si nos fijamos en el fichero de configuración del módulo 
+/etc/apache2/mods-available/security2.conf, ademas de indicar el directorio donde se va a guardar información (directiva SecDataDir), incluye el fichero donde 
+están definida las CRS:
+
+IncludeOptional /usr/share/modsecurity-crs/owasp-crs.load
+Las reglas se encuentran en el directorio /usr/share/modsecurity-crs/rules.
+
+Demostración: evitar un ataque SQL Injection
+Tenemos preparado un servidor LAMP, donde hemos creado una tabla con usuarios y contraseñas:
+
+# mysql -u root -p
+mysql> create database sample;
+mysql> use sample;
+mysql> create table users(username VARCHAR(100),password VARCHAR(100));
+mysql> insert into users values('pepe','password');
+mysql> create user 'user'@'localhost';
+mysql> grant all privileges on sample.* to 'user'@'localhost' identified by 'password';
+mysql> flush privileges;
+Y una aplicación PHP (login.php) que realiza la operación de ‘login’:
+
+<html>
+<body>
+<?php
+    if(isset($_POST['login']))
+    {
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+        $con = mysqli_connect('localhost','user','password','sample');
+        $result = mysqli_query($con, "SELECT * FROM `users` WHERE username='$username' AND password='$password'");
+        if(mysqli_num_rows($result) == 0)
+            echo 'Invalid username or password';
+        else
+            echo '<h1>Logged in</h1><p>This is text that should only be displayed when logged in with valid credentials.</p>';
+    }
+    else
+    {
+?>
+        <form action="" method="post">
+            Username: <input type="text" name="username"/><br />
+            Password: <input type="password" name="password"/><br />
+            <input type="submit" name="login" value="Login"/>
+        </form>
+<?php
+    }
+?>
+</body>
+</html>
+El programa parece que funciona correctamente, pero sin necesidad de poner contraseña, podemos acceder si introducimos como nombre de usuario la cadena:
+
+' or true -- 
+Nota: Es importante señalar que la cadena termina en un espacio.
+
+Si lo probamos y comprobamos el fichero de log de auditoria podemos encontrar que se ha detectado el ataque:
+
+Message: Warning. detected SQLi using libinjection with fingerprint 's&1' [file "/usr/share/modsecurity-crs/rules/REQUEST-942-APPLICATION-ATTACK-SQLI.conf"] ...
+Como vemos la regla que detecta el SQL injection se encuentra definida en el fichero /usr/share/modsecurity-crs/rules/REQUEST-942-APPLICATION-ATTACK-SQLI.conf.
+
+Para terminar podemos evitar que se produzca el ataque habilitando el módulo en el fichero de configuración /etc/modsecurity/modsecurity.conf:
+
+SecRuleEngine On
+
+Además de utilizar HTTPS y activar y configurar modSecurity, podemos tener en cuanta algunos otros consejos de seguridad:
+
+Ocultar versión y sistema
+En el fichero /etc/apache2/conf-enabled/security.conf, podemos configurar las directivas ServerSignature y ServerTokens.
+
+ServerTokens: Donde configuramos la información devuelta en las cabeceras de respuesta HTTP. Además si la otra directiva está activa, muestra esa información 
+en las páginas de error predeterminada.
+ServerSignature: Permite controlar si se muestra información en las páginas de errores por defecto (la versión de apache que tenemos instalada, la IP y el 
+puerto).
+
+En un servidor en producción los valores deberían ser:
+
+ServerSignature Off
+ServerTokens Prod
+Desactivar listado de directorios
+Es aconsejable desactivar la opción de Indexes para evitar que apache2 muestre la lista de ficheros y directorios sino encuentra un fichero que tenga un nombre 
+predeterminado por la directiva DirectotyIndex. Por ejemplo:
+
+<Directory /var/www/pagina1/>
+    Options -Indexes
+</Directory>
+Deshabilitar módulos innecesarios
+Esto es necesario por dos razones, para reducir la ocupación de recurso, aumentando el rendimiento, y para evitar posibles ataques debido a vulnerabilidades 
+que algunos módulos puedan tener. Podemos visualizar los módulos activos ejecutamos:
+
+# apache2ctl -M
+Por ejemplo, por defecto tenemos activo el módulo status que nos permite ver el estado del servidor si accedemos a la URL /server-status (por defecto sólo desde
+ localhost). este m´odulo lo podríamos desactivar:
+
+# a2dismod status
+Deshabilitar enlaces simbólicos
+Por defecto de permite seguir los enlaces simbólicos dentro de nuestros Virtual Host. Esta funcionalidad puede traer consecuencias no deseables si por una mal 
+configuración se filtran contenidos de ficheros que no deberían ser visibles para el servidor web. Por lo tanto en el fichero /etc/apache2/apache2.conf 
+deberíamos tener:
+
+ <Directory /var/www/>
+    # Options Indexes FollowSymLinks 
+    AllowOverride None
+    Require all granted
+</Directory>
+Comentamos o quitamos la línea que permite mostrar el índice de ficheros y directorios y seguir enlaces simbólicos.
+
+Limitar tamaño de peticiones
+Por defecto Apache no establece ningún límite para las peticiones HTTP. Si ponemos un límite podemos evitar un ataque por denegación del servicio. Mediante la 
+directiva LimitRequestBody podremos establecer un límite comprendido entre 0 (sin límite) y 2147483647 (2GB).
+
+Si por ejemplo tenemos una web y queremos permitir que se suban archivos de más de 500k, deberemos aplicar esta configuración:
+
+<Directory "var/www/pagina1/subida_usuario">
+    LimitRequestBody 512000
+</Directory>
+Limitar acceso a sistemas de control de versiones
+Si estamos trabajando con Git en nuestro sitio web sería necesario limitar el acceso al directorio .git. En el fichero /etc/apache2/conf-enabled/security.conf 
+tenemos un ejemplo comentado para subversion, para git podríamos tener esta configuración:
+
+<DirectoryMatch "/\.git">
+    Require all denied
+</DirectoryMatch>
+Mantenernos actualizados
+Por último es muy importante mantener actualizado el servidor web con los parches de seguridad que se van publicando en nuestro sistema, para ello:
+
+# apt-get update
+# apt-get upgrade
+
+# apache2ctl -v
+Server version: Apache/2.4.25 (Debian)
+Server built:   2017-09-19T18:58:57
+
+Un proxy inverso es un tipo de servidor proxy que recupera recursos en nombre de un cliente desde uno o más servidores. Por lo tanto el cliente hace la 
+petición al puerto 80 del proxy, y éste es el que hace la petición al servidor web que normalmente está en una red interna no accesible desde el cliente.
+						example.com
+				  _ _ _ _ _ _ _ _ _ _ _ _
+Internet ------> | Proxy ---> Web server |
+		 <------ |       <---            |
+				  -----------------------
+					 internal network
+					 
+Apache como proxy inverso
+Apache2.4 puede funcionar como proxy inverso usando el módulo proxy junto a otros módulos, por ejemplo:
+
+proxy_http: Para trabajar con el protocolo HTTP.
+proxy_ftp: Para trabajar con el protocolo FTP.
+proxy_html: Permite reescribir los enlaces HTML en el espacio de direcciones de un proxy.
+proxy_ajp: Para trabajar con el protocolo AJP para Tomcat.
+…
+Por lo tanto, para empezar, vamos activar los módulos que necesitamos:
+
+# a2enmod proxy proxy_http
+Ejemplo de utilización de proxy inverso
+Tenemos a nuestra disposición un servidor interno (no accesible desde el cliente) en la dirección privada, con el nombre de interno.example.org. 
+Tenemos un servidor que va a funcionar de proxy, llamado proxy.exampleservidor.example.org con dos interfaces de red: una pública conectada a la red donde se 
+encuentra el cliente, y otra interna conectada a la red donde se encuentra el servidor interno.
+
+Sirviendo una página estática
+En nuestro servidor interno hemos creado un virtual host para servir una página estática, index.html.
+Vamos a utilizar la directiva ProxyPass en el fichero de configuración del virtual host, de la siguiente forma:
+
+ProxyPass "/web/" "http://interno.example.org/"
+También lo podemos configurar de forma similar con:
+
+<Location "/web/">
+    ProxyPass "http://interno.example.org/"
+</Location>
+Evidentemente debe funcionar la resolución de nombre para que el proxy pueda acceder al servidor interno.
+
+De esta manera al acceder desde el cliente la URL http://servidor.example.org/web/ se mostraría la página que se encuentra en el servidor interno.
+
+El problema de las redirecciones
+Cuando creamos una redirección en un servidor web y el cliente intenta acceder al recurso, el servidor manda una respuesta con código de estado 301 o 302, 
+e indica la URL de la nueva ubicación del recurso en una cabecera HTTP llamada Location.
+
+Si hemos configurado una redirección en el servidor interno, cuando se accede al recurso a través del proxy, la redirección se realiza pero la cabecera 
+Location viene referencia la dirección del servidor interno, por lo que el cliente es incapaz de acceder a la nueva ubicación. Para solucionarlo utilizamos 
+la directiva ProxyPassReverse que se encarga de reescribir la URL de la cabecera Location.
+
+La configuración quedaría:
+
+ProxyPass "/web/" "http://interno.example.org/"
+ProxyPassReverse "/web/" "http://interno.example.org/"
+O de esta otra forma:
+
+<Location "/web/">
+    ProxyPass "http://interno.example.org/"
+    ProxyPassReverse "http://interno.example.org/"
+</Location>
+El problema de las rutas HTML
+La página que servimos a través del proxy que se guarda en el servidor interno puede tener declarada rutas, por ejemplo en imágenes o enlaces. Nos podemos 
+encontrar con diferentes tipos de rutas:
+
+http://interno.example.org/imagen.jpg: Una ruta absoluta donde aparece la dirección del servidor interno y que evidentemente el cliente no va a poder seguir.
+/imagen.jpg: Una ruta absoluta, referenciada a la raíz del DocumentRoot.
+imagen.jpg: Una ruta relativa.
+Si tenemos una ruta relativa, el cliente la va a poder seguir sin problema cuando accede a través del proxy, pero si tenemos una ruta como la segunda no lo 
+va a poder hacer, porque en el DocumentRoot del proxy no existe este recurso.
+
+Para solucionar este problema debemos reescribir el HTML para cambiar la referencia del enlace. Para ello necesitamos activar un nuevo módulo:
+
+# a2enmod proxy_html
+Y realizar la siguiente configuración:
+
+ProxyPass "/web/"  "http://interno.example.org/"
+ProxyPassReverse "/web/"  "http://interno.example.org/"
+ProxyHTMLURLMap http://interno.example.org /web
+<Location /web/>
+    ProxyPassReverse /
+    ProxyHTMLEnable On
+    ProxyHTMLURLMap / /web/
+</Location>
+Como vemos hemos configurado un proxy para HTML, que será responsable de reescribir todos las rutas que contiene el HTML, utilizando la directiva 
+ProxyHTMLURLMap:
+
+ProxyHTMLURLMap http://interno.example.org /web
+Es importante no poner la barra final, cuando se encuentra una ruta que coincide con el primer patrón se reescribe con el segundo, esta regla reescribe 
+las ruta del tipo de la primera opción que hemos visto anteriormente. Para arreglar la rutas de la segunda opción, utilizamos dentro de la sección Location:
+
+ProxyHTMLURLMap / /web/
+Después de iniciar comprobamos que al intentar acceder al proxy obtenemos un error en el navegador del cliente “Error de codificación de contenido”.
+
+Sirviendo contenido multimedia
+Acabamos de configurar un proxy que examina y reescribe el HTML de nuestro sitio web, pero evidentemente existe más contenido en nuestro sitio que no es 
+HTML y no debería ser procesado por proxy_html. Esto se soluciona verificando la cabecera del contenido y rechazando todos los contenidos que no tengan el tipo 
+MIME adecuado.
+
+Pero tenemos un problema: normalmente se comprime el contenido HTML, y encontramos cabeceras de este tipo:
+
+Content-Type: text/html
+Content-Encoding: gzip
+Este contenido no debería pasar por el analizador de proxy_html. Para solucionar esto podemos negarnos a admitir la compresión. La eliminación de cualquier 
+cabecera de petición Accept-Encoding hace el trabajo. Para ello podemos utilizar la directiva RequestHeader del módulos headers, por lo tanto activamos el 
+módulo:
+
+# a2enmod headers
+Y usamos la directiva RequestHeader dentro del la sección Location:
+
+ProxyPass "/web/"  "http://interno.example.org/"
+ProxyPassReverse "/web/"  "http://interno.example.org/"
+ProxyHTMLURLMap http://interno.example.org /web
+<Location /web/>
+    ProxyPassReverse /
+    ProxyHTMLEnable On
+    ProxyHTMLURLMap / /web/
+    RequestHeader unset Accept-Encoding
+</Location>
+Ahora si podemos acceder a la página completa a través del proxy.
+
+AWStats es una herramienta open source analizar datos de acceso a un servidor web y genera informes HTML. Los datos son presentados visualmente en informes de 
+tablas y gráficos de barra. Pueden crearse informes estáticos mediante una interfaz de línea de comando, y se pueden obtener informes a través de un navegador 
+web, gracias a un programa CGI.
+
+Vamos a instalar y configurar awstats para mostrar los datos estadísticos del virtual host www.pagina1.org. Para cualquier otro virtual host los pasos de 
+configuración serían similares.
+
+Preparación del virtual host
+Si queremos que awstats lea los acceso a cada virtual host por separado tenemos que tener que guardar los accesos en ficheros separados para cad virtual host, 
+por la tanto en el fichero /etc/apache2/sites-availables/pagina1.conf:
+
+...
+CustomLog ${APACHE_LOG_DIR}/access_pagina1.log combined
+...
+Instalación de awstats
+Para realizar la instalación de awstats:
+
+# apt-get install awstats
+Vamos a crear la configuración de apache para el acceso al script CGI awstats.pl en el fichero /etc/apache2/conf-available/awstats.conf:
+
+ScriptAlias /awstats/ /usr/lib/cgi-bin/
+Alias /awstats-icon/ /usr/share/awstats/icon/
+Alias /awstatsclasses/ /usr/share/java/awstats/
+
+<Directory "/usr/lib/cgi-bin/">
+    Options None
+    AllowOverride None
+</Directory>
+Para finalizar la instalación activamos la configuración el módulo cgi:
+
+# a2enmod cgi
+# a2enconf awstats
+Y reinciamos el servidor.
+
+Configuración de awstats
+Ahora tenemos que crear un fichero de configuración de awstats para cada virtual host, para ello:
+
+# cd /etc/awstats
+# cp awstats.conf awstats.www.pagina1.org.conf
+Editamos el fichero (tenemos muchos parámetros) pero es suficiente indicar los siguientes:
+
+LogFile="/var/log/apache2/access_pagina1.log"
+SiteDomain="www.pagina1.org" 
+Generamos los informes
+Para generar los datos que se van a mostrar en el informe, ejecutamos:
+
+/usr/lib/cgi-bin/awstats.pl -config=www.pagina1.org -update
+Es conveniente añadir una tarea programa para que se generen los informes cada cierto tiempo, por ejemplo cada hora:
+
+# crontab -e
+
+0 * * * * /usr/lib/cgi-bin/awstats.pl -config=www.pagina1.org -update
+Para visualizar el informe en el navegado accedemos a la siguiente URL:
+
+http://www.pagina1.org/awstats/awstats.pl?config=www.pagina1.org
